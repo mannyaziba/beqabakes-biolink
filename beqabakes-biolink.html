@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#1a0a10">
+<title>BeqaBakes — Send a cake in minutes</title>
+<meta name="description" content="Fast, beautiful cake gifting. Pick. Pay. Done.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  /* FIX 1+3: Remove height:100% lock that prevents scroll on short screens.
+     Use min-height:100vh on body only. */
+  body {
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    /* FIX 1: flex-start not center, so overflow scrolls upward not clipped */
+    justify-content: center;
+    padding: 56px 20px 56px; /* FIX 2: generous top padding, avatar pulse rings need room */
+    position: relative;
+    overflow-x: hidden;
+    background: #1a0a10;
+  }
+
+  /* ── BACKGROUND ── */
+  .bg {
+    position: fixed; inset: 0; z-index: 0;
+    background: linear-gradient(160deg, #1a0a10 0%, #2a0e1a 40%, #1e0d16 100%);
+  }
+  .bg::before {
+    content: '';
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(ellipse 70% 50% at 20% 20%, rgba(200,90,122,.18) 0%, transparent 60%),
+      radial-gradient(ellipse 50% 60% at 85% 70%, rgba(180,60,100,.14) 0%, transparent 55%),
+      radial-gradient(ellipse 40% 40% at 50% 50%, rgba(230,130,160,.06) 0%, transparent 60%);
+  }
+  .bg::after {
+    content: '';
+    position: absolute; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.04'/%3E%3C/svg%3E");
+    background-size: 180px;
+    opacity: .4;
+    pointer-events: none;
+  }
+
+  /* Floating petals */
+  .petal {
+    position: fixed;
+    border-radius: 50% 0 50% 0;
+    opacity: 0;
+    animation: drift linear infinite;
+    pointer-events: none;
+    z-index: 1;
+  }
+  @keyframes drift {
+    0%   { transform: translateY(110vh) rotate(0deg); opacity: 0; }
+    5%   { opacity: .4; }
+    90%  { opacity: .2; }
+    100% { transform: translateY(-10vh) rotate(360deg); opacity: 0; }
+  }
+
+  /* ── CARD ── */
+  .card {
+    position: relative; z-index: 10;
+    width: 100%; max-width: 420px;
+    display: flex; flex-direction: column; align-items: center;
+    /* FIX 2: top padding ensures pulse rings never clip against viewport */
+    padding-top: 16px;
+    animation: rise .8s cubic-bezier(.22,1,.36,1) both;
+  }
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(28px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── AVATAR ── */
+  .avatar-wrap {
+    position: relative;
+    margin-bottom: 20px;
+    animation: rise .8s .1s cubic-bezier(.22,1,.36,1) both;
+  }
+  .avatar {
+    width: 96px; height: 96px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #2a1020 0%, #3a1828 100%);
+    border: 2.5px solid rgba(200,90,122,.35);
+    display: flex; align-items: center; justify-content: center;
+    box-shadow:
+      0 0 0 6px rgba(200,90,122,.08),
+      0 12px 40px rgba(0,0,0,.5);
+    overflow: hidden;
+  }
+  .avatar svg { width: 54px; height: 54px; }
+  .avatar-pulse {
+    position: absolute; inset: -6px;
+    border-radius: 50%;
+    border: 1.5px solid rgba(200,90,122,.2);
+    animation: pulse-ring 2.5s ease-in-out infinite;
+  }
+  .avatar-pulse-2 {
+    position: absolute; inset: -12px;
+    border-radius: 50%;
+    border: 1px solid rgba(200,90,122,.1);
+    animation: pulse-ring 2.5s .6s ease-in-out infinite;
+  }
+  @keyframes pulse-ring {
+    0%,100% { transform: scale(1); opacity: .5; }
+    50% { transform: scale(1.05); opacity: 1; }
+  }
+
+  /* ── IDENTITY ── */
+  .identity {
+    text-align: center;
+    margin-bottom: 28px;
+    animation: rise .8s .15s cubic-bezier(.22,1,.36,1) both;
+  }
+  .brand-name {
+    font-family: 'Playfair Display', serif;
+    font-size: 28px; font-weight: 700;
+    color: #fff;
+    letter-spacing: -.3px;
+    margin-bottom: 4px;
+  }
+  .brand-handle {
+    font-size: 13px; font-weight: 500;
+    color: rgba(255,255,255,.4);
+    letter-spacing: .5px;
+    margin-bottom: 10px;
+  }
+  .brand-tagline {
+    font-family: 'Playfair Display', serif;
+    font-size: 15px; font-style: italic;
+    color: rgba(255,255,255,.6);
+    line-height: 1.55;
+  }
+  /* FIX 6: Removed self-animation from brand-micro — parent .identity already
+     animates. Double animation caused opacity/transform stacking conflict. */
+  .brand-micro {
+    display: inline-flex; align-items: center; gap: 6px;
+    margin-top: 12px;
+    font-size: 12px; /* FIX 13: was 11px — too small on Android */
+    font-weight: 600;
+    letter-spacing: 1.5px; text-transform: uppercase;
+    color: #C85A7A;
+    background: rgba(200,90,122,.12);
+    padding: 5px 14px; border-radius: 999px;
+    border: 1px solid rgba(200,90,122,.2);
+  }
+  .live-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: #C85A7A;
+    animation: blink 1.6s ease-in-out infinite;
+  }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+  /* ── BUTTONS ── */
+  .buttons {
+    width: 100%;
+    display: flex; flex-direction: column; gap: 12px;
+    margin-bottom: 32px;
+  }
+
+  /* FIX 4: Removed `border: none` from base — was fragile and could override
+     variant border rules depending on load order. Each variant owns its border. */
+  .link-btn {
+    display: flex; align-items: center;
+    width: 100%;
+    padding: 0 20px;
+    height: 62px;
+    border-radius: 16px;
+    text-decoration: none;
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 600; font-size: 15px;
+    position: relative; overflow: hidden;
+    transition: transform .2s cubic-bezier(.22,1,.36,1), box-shadow .2s;
+    animation: rise .8s cubic-bezier(.22,1,.36,1) both;
+    cursor: pointer;
+  }
+  .link-btn:hover { transform: translateY(-3px) scale(1.01); }
+  .link-btn:active { transform: scale(.98); }
+
+  .link-btn-icon {
+    width: 36px; height: 36px;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    margin-right: 14px;
+  }
+  .link-btn-icon svg { width: 20px; height: 20px; }
+
+  .link-btn-text { flex: 1; }
+  .link-btn-label { display: block; line-height: 1.2; }
+  /* FIX 13: was 11px */
+  .link-btn-sub { display: block; font-size: 12px; font-weight: 400; opacity: .7; margin-top: 2px; }
+
+  /* FIX 10: SVG arrow instead of raw Unicode → renders identically across all OS/fonts */
+  .link-btn-arrow {
+    opacity: .6;
+    flex-shrink: 0;
+    transition: transform .2s, opacity .2s;
+    display: flex; align-items: center;
+  }
+  .link-btn-arrow svg { width: 16px; height: 16px; }
+  .link-btn:hover .link-btn-arrow { transform: translateX(4px); opacity: 1; }
+
+  /* Button 1 — Quick Order (primary, rose) */
+  .btn-order {
+    background: linear-gradient(135deg, #C85A7A 0%, #A8435F 100%);
+    color: white;
+    border: none;
+    box-shadow: 0 8px 32px rgba(200,90,122,.35), 0 2px 8px rgba(0,0,0,.2);
+    animation-delay: .22s;
+  }
+  .btn-order::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,.12) 0%, transparent 60%);
+    pointer-events: none;
+  }
+  .btn-order:hover {
+    box-shadow: 0 16px 48px rgba(200,90,122,.45), 0 4px 12px rgba(0,0,0,.3);
+  }
+  .btn-order .link-btn-icon { background: rgba(255,255,255,.18); }
+
+  /* Button 2 — Lookbook (soft surface) */
+  .btn-lookbook {
+    background: rgba(255,255,255,.07);
+    color: rgba(255,255,255,.92);
+    border: 1px solid rgba(255,255,255,.12);
+    box-shadow: 0 4px 20px rgba(0,0,0,.25);
+    backdrop-filter: blur(12px);
+    animation-delay: .30s;
+  }
+  .btn-lookbook:hover {
+    background: rgba(255,255,255,.11);
+    border-color: rgba(200,90,122,.35);
+    box-shadow: 0 8px 32px rgba(0,0,0,.3);
+  }
+  /* FIX 9: was rose-coloured (#C85A7A stroke) — inconsistent with other buttons.
+     All button icons use white strokes on their respective backgrounds. */
+  .btn-lookbook .link-btn-icon { background: rgba(200,90,122,.15); }
+
+  /* Button 3 — Custom Order (outlined rose) */
+  .btn-custom {
+    background: rgba(200,90,122,.08);
+    color: rgba(255,255,255,.9);
+    border: 1.5px solid rgba(200,90,122,.35);
+    box-shadow: 0 4px 20px rgba(0,0,0,.2);
+    backdrop-filter: blur(8px);
+    animation-delay: .38s;
+  }
+  .btn-custom:hover {
+    background: rgba(200,90,122,.15);
+    border-color: rgba(200,90,122,.6);
+    box-shadow: 0 8px 32px rgba(200,90,122,.2);
+  }
+  .btn-custom .link-btn-icon { background: rgba(200,90,122,.2); }
+
+  /* ── DIVIDER ── */
+  .divider {
+    width: 48px; height: 1px;
+    background: rgba(255,255,255,.12);
+    margin: 0 auto 28px;
+    animation: rise .8s .44s cubic-bezier(.22,1,.36,1) both;
+  }
+
+  /* ── SOCIAL ── */
+  .socials {
+    /* FIX 12: flex-wrap so narrow screens don't overflow */
+    display: flex; flex-wrap: wrap; gap: 12px; justify-content: center;
+    animation: rise .8s .48s cubic-bezier(.22,1,.36,1) both;
+    margin-bottom: 28px;
+  }
+  .social-btn {
+    display: flex; align-items: center; gap: 9px;
+    padding: 10px 18px;
+    border-radius: 999px;
+    text-decoration: none;
+    font-size: 13px; font-weight: 600;
+    color: rgba(255,255,255,.75);
+    background: rgba(255,255,255,.06);
+    border: 1px solid rgba(255,255,255,.1);
+    /* FIX 11: was `transition: all` — explicit properties only */
+    transition: color .2s, background .2s, border-color .2s, transform .2s;
+  }
+  .social-btn:hover {
+    color: white;
+    background: rgba(255,255,255,.1);
+    border-color: rgba(255,255,255,.2);
+    transform: translateY(-2px);
+  }
+  .social-btn svg { width: 16px; height: 16px; flex-shrink: 0; }
+
+  /* ── FOOTER TAG ── */
+  .footer-tag {
+    font-family: 'Playfair Display', serif;
+    font-size: 12px; font-style: italic;
+    color: rgba(255,255,255,.2);
+    text-align: center;
+    animation: rise .8s .54s cubic-bezier(.22,1,.36,1) both;
+    padding-bottom: 16px;
+  }
+</style>
+</head>
+<body>
+
+<div class="bg" aria-hidden="true"></div>
+
+<!-- Floating petals (decorative) -->
+<div class="petal" aria-hidden="true" style="width:8px;height:10px;background:rgba(200,90,122,.5);left:12%;animation-duration:14s;animation-delay:0s;"></div>
+<div class="petal" aria-hidden="true" style="width:5px;height:7px;background:rgba(220,110,140,.4);left:28%;animation-duration:18s;animation-delay:3s;"></div>
+<div class="petal" aria-hidden="true" style="width:10px;height:12px;background:rgba(180,70,100,.35);left:55%;animation-duration:12s;animation-delay:6s;"></div>
+<div class="petal" aria-hidden="true" style="width:6px;height:8px;background:rgba(240,140,170,.45);left:72%;animation-duration:16s;animation-delay:1.5s;"></div>
+<div class="petal" aria-hidden="true" style="width:7px;height:9px;background:rgba(200,90,122,.4);left:88%;animation-duration:20s;animation-delay:8s;"></div>
+<div class="petal" aria-hidden="true" style="width:4px;height:6px;background:rgba(220,120,150,.5);left:40%;animation-duration:15s;animation-delay:10s;"></div>
+
+<!-- FIX 14: aria-label on main landmark -->
+<main class="card" aria-label="BeqaBakes profile and ordering links">
+
+  <!-- Avatar -->
+  <div class="avatar-wrap" aria-hidden="true">
+    <div class="avatar-pulse-2"></div>
+    <div class="avatar-pulse"></div>
+    <div class="avatar">
+      <!-- FIX 7+8: Candle wick colour unified; wave path y-position corrected to
+           sit within the bottom tier rect (y=34+4=38) not overlapping the mid tier. -->
+      <!-- BeqaBakes Submark Logo -->
+      <svg viewBox="0 0 181.29504 158.98169" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <g transform="translate(-1759.2088,-1124.4241)">
+          <g transform="matrix(0.41401488,0,0,0.41401488,-1850.3791,2243.1779)">
+            <g transform="translate(-909.99998)">
+              <g>
+                <path style="fill:#f58ba6;fill-opacity:1;stroke-width:4.19494;stroke-linecap:square;stroke-linejoin:round" d="m 9628.4982,-2488.8735 v 170.6666 h 355.6739 v -0.1565 c 45.8089,-1.6409 82.2209,-38.9533 82.2209,-85.1768 0,-46.2235 -36.412,-83.5359 -82.2209,-85.1769 v -0.1564 z"/>
+                <path style="fill:#5e3023;fill-opacity:1;stroke:none;stroke-width:1.06667;stroke-linecap:square;stroke-linejoin:round" d="m 9628.4986,-2488.8738 v 54.6778 c 0,0 9.9893,30.4398 42.666,30.6757 42.6756,0.308 46.936,-38.5365 42.9502,-85.3535 z"/>
+              </g>
+              <g>
+                <path style="fill:#f58ba6;fill-opacity:1;stroke-width:4.19494;stroke-linecap:square;stroke-linejoin:round" d="m 9628.4982,-2702.2069 v 170.6667 h 355.6739 v -0.1565 c 45.8089,-1.641 82.2209,-38.9533 82.2209,-85.1768 0,-46.2235 -36.412,-83.5359 -82.2209,-85.1769 v -0.1565 z"/>
+                <path style="fill:#5e3023;fill-opacity:1;stroke:none;stroke-width:1.06667;stroke-linecap:square;stroke-linejoin:round" d="m 9628.4986,-2702.1873 v 170.6475 h 80.7861 c -2.2672,-17.6565 -4.4988,-35.2177 -5.2002,-51.1104 -1.7055,-38.6459 5.4118,-67.7422 41.7471,-66.2041 77.0995,3.2637 11.2693,110.4802 71.8613,117.3145 h 13.6172 c 86.0727,-7.934 3.1427,-115.4849 85.1885,-117.3145 36.7627,-0.8197 41.7169,33.4915 74.666,32 29.4354,-1.3323 44.1184,-23.594 42.6674,-42.666 -1.383,-18.1623 -8.249,-28.5339 -16.53,-34.54 -10.113,-4.7233 -21.2962,-7.5663 -33.1296,-7.9902 v -0.1368 z"/>
+              </g>
+            </g>
+            <g transform="matrix(0.75716511,0,0,0.75716511,4313.1007,-2344.9883)">
+              <g style="fill:#f58ba6;fill-opacity:1" transform="translate(0,1188)">
+                <path style="fill:#f58ba6;fill-opacity:1;stroke:none;stroke-width:3.68107;stroke-linecap:square;stroke-linejoin:round" d="m 6107.4369,-1540.1325 c 61.0169,22.5029 50.6311,79.192 50.6311,79.192 0,0 51.0638,-27.2626 89.578,21.2047 -5.9107,69.6197 -53.6603,74.8644 -53.6603,74.8644 0,0 35.9178,26.8303 0.8655,91.3092 -72.701,6.491 -85.6833,-32.4559 -85.6833,-32.4559 0,0 -15.146,39.3798 -86.9816,33.3214 -32.023,-58.4204 0,-91.3092 0,-91.3092 0,0 -49.7655,-11.684 -54.9584,-73.1337 31.5903,-47.1693 88.7125,-25.9645 88.7125,-25.9645 0,0 -6.4912,-61.4495 51.4965,-77.0284 z"/>
+                <path style="fill:#f58ba6;fill-opacity:1;stroke:#4b2e2b;stroke-width:8.83457;stroke-linecap:square;stroke-linejoin:miter;stroke-dasharray:none;stroke-opacity:1" d="m 6107.4369,-1540.1325 c 61.0169,22.5029 50.6311,79.192 50.6311,79.192 0,0 51.0638,-27.2626 89.578,21.2047 -5.9107,69.6197 -53.6603,74.8644 -53.6603,74.8644 0,0 35.9178,26.8303 0.8655,91.3092 -72.701,6.491 -85.6833,-32.4559 -85.6833,-32.4559 0,0 -15.146,39.3798 -86.9816,33.3214 -32.023,-58.4204 0,-91.3092 0,-91.3092 0,0 -49.7655,-11.684 -54.9584,-73.1337 31.5903,-47.1693 88.7125,-25.9645 88.7125,-25.9645 0,0 -6.4912,-61.4495 51.4965,-77.0284 z"/>
+              </g>
+              <g transform="matrix(2.944857,0,0,2.944857,5252.0997,-6849.3737)" style="fill:#ffe3e9;fill-opacity:1">
+                <g style="fill:#ffe3e9;fill-opacity:1">
+                  <circle style="fill:#ffe3e9;fill-opacity:1;stroke:none" cx="290.89203" cy="2256.3777" r="2.5"/>
+                  <g style="fill:#ffe3e9;fill-opacity:1">
+                    <g style="fill:#ffe3e9;fill-opacity:1">
+                      <ellipse style="fill:#ffe3e9;fill-opacity:1;stroke:none" cx="290.89203" cy="2244.6311" rx="2.0572872" ry="7.4944034"/>
+                      <ellipse style="fill:#ffe3e9;fill-opacity:1;stroke:none" cx="290.89203" cy="2268.1243" rx="2.0572872" ry="7.4944034"/>
+                    </g>
+                  </g>
+                  <g transform="rotate(60,290.89203,2256.3777)" style="fill:#ffe3e9;fill-opacity:1">
+                    <g style="fill:#ffe3e9;fill-opacity:1">
+                      <ellipse style="fill:#ffe3e9;fill-opacity:1;stroke:none" cx="290.89203" cy="2244.6311" rx="2.0572872" ry="7.4944034"/>
+                      <ellipse style="fill:#ffe3e9;fill-opacity:1;stroke:none" cx="290.89203" cy="2268.1243" rx="2.0572872" ry="7.4944034"/>
+                    </g>
+                  </g>
+                  <g transform="rotate(-60,290.89203,2256.3777)" style="fill:#ffe3e9;fill-opacity:1">
+                    <g style="fill:#ffe3e9;fill-opacity:1">
+                      <ellipse style="fill:#ffe3e9;fill-opacity:1;stroke:none" cx="290.89203" cy="2244.6311" rx="2.0572872" ry="7.4944034"/>
+                      <ellipse style="fill:#ffe3e9;fill-opacity:1;stroke:none" cx="290.89203" cy="2268.1243" rx="2.0572872" ry="7.4944034"/>
+                    </g>
+                  </g>
+                </g>
+              </g>
+            </g>
+          </g>
+        </g>
+      </svg>
+    </div>
+  </div>
+
+  <!-- Identity -->
+  <div class="identity">
+    <div class="brand-name">BeqaBakes</div>
+    <div class="brand-handle">@beqabakes</div>
+    <div class="brand-tagline">Because Beqa dey Bake.<br>Every box feels like a celebration.</div>
+    <div class="brand-micro">
+      <div class="live-dot" aria-hidden="true"></div>
+      <span>Taking orders now</span>
+    </div>
+  </div>
+
+  <!-- Main Buttons -->
+  <div class="buttons">
+
+    <!-- Quick Order -->
+    <a href="https://cbl.link/jAijhdw" class="link-btn btn-order" target="_blank" rel="noopener noreferrer" aria-label="Quick Order — Pick, Pay, Done in under 2 minutes">
+      <div class="link-btn-icon" aria-hidden="true">
+        <svg viewBox="0 0 20 20" fill="none">
+          <path d="M2 2h2.5l1.8 8.5h8.4l1.5-5.5H5.5" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="8.5" cy="16.5" r="1.3" fill="white"/>
+          <circle cx="14.5" cy="16.5" r="1.3" fill="white"/>
+          <path d="M6.8 10.5l.5 2.5h8" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <div class="link-btn-text">
+        <span class="link-btn-label">Quick Order</span>
+        <span class="link-btn-sub">Pick → Pay → Done. Under 2 minutes.</span>
+      </div>
+      <!-- FIX 10: SVG arrow, not raw Unicode character -->
+      <span class="link-btn-arrow" aria-hidden="true">
+        <svg viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </span>
+    </a>
+
+    <!-- Lookbook -->
+    <!-- FIX 5: rel="noopener noreferrer" consistent with other external links -->
+    <a href="https://beqabakes-lookbook.vercel.app" class="link-btn btn-lookbook" target="_blank" rel="noopener noreferrer" aria-label="BeqaBakes Lookbook — browse all cakes, bentos and gift sets">
+      <div class="link-btn-icon" aria-hidden="true">
+        <!-- FIX 9: stroke="white" not "#C85A7A" — consistent with other button icons -->
+        <svg viewBox="0 0 20 20" fill="none">
+          <rect x="3" y="2" width="14" height="16" rx="3" stroke="white" stroke-width="1.6"/>
+          <line x1="6" y1="7" x2="14" y2="7" stroke="white" stroke-width="1.4" stroke-linecap="round"/>
+          <line x1="6" y1="10" x2="14" y2="10" stroke="white" stroke-width="1.4" stroke-linecap="round"/>
+          <line x1="6" y1="13" x2="11" y2="13" stroke="white" stroke-width="1.4" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="link-btn-text">
+        <span class="link-btn-label">BeqaBakes Lookbook</span>
+        <span class="link-btn-sub">Browse all cakes, bentos &amp; gift sets</span>
+      </div>
+      <span class="link-btn-arrow" aria-hidden="true">
+        <svg viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </span>
+    </a>
+
+    <!-- Custom Order -->
+    <a href="https://cbl.link/zqhULGY" class="link-btn btn-custom" target="_blank" rel="noopener noreferrer" aria-label="Custom Order — special design, name, or colour">
+      <div class="link-btn-icon" aria-hidden="true">
+        <svg viewBox="0 0 20 20" fill="none">
+          <path d="M13.5 3.5l3 3L7 16H4v-3L13.5 3.5z" stroke="rgba(255,255,255,.9)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M11.5 5.5l3 3" stroke="rgba(255,255,255,.9)" stroke-width="1.6" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="link-btn-text">
+        <span class="link-btn-label">Custom Order</span>
+        <span class="link-btn-sub">Special design, name, or colour? Chat with us.</span>
+      </div>
+      <span class="link-btn-arrow" aria-hidden="true">
+        <svg viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </span>
+    </a>
+
+  </div>
+
+  <!-- Divider -->
+  <div class="divider" aria-hidden="true"></div>
+
+  <!-- Socials -->
+  <!-- FIX 17: aria-label on social links for screen reader context -->
+  <div class="socials">
+    <a href="https://instagram.com/beqabakes" target="_blank" rel="noopener noreferrer" class="social-btn" aria-label="Follow BeqaBakes on Instagram">
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <rect x="2" y="2" width="20" height="20" rx="6" stroke="currentColor" stroke-width="1.8"/>
+        <circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="1.8"/>
+        <circle cx="17.5" cy="6.5" r="1" fill="currentColor"/>
+      </svg>
+      @beqabakes
+    </a>
+    <a href="https://facebook.com/beqabakes" target="_blank" rel="noopener noreferrer" class="social-btn" aria-label="Follow BeqaBakes on Facebook">
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      BeqaBakes
+    </a>
+  </div>
+
+  <!-- Footer -->
+  <!-- FIX 15: aria-hidden on decorative star glyph -->
+  <div class="footer-tag">Because Beqa dey Bake. <span aria-hidden="true">✦</span></div>
+
+</main>
+
+</body>
+</html>
